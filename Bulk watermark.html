@@ -1,0 +1,286 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bulk Image Watermarker (WebP Optimized)</title>
+    <!-- Tailwind CSS for styling -->
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-100 min-h-screen font-sans">
+
+    <div class="container mx-auto p-6 max-w-6xl">
+        <h1 class="text-3xl font-bold text-gray-800 mb-6 text-center">Bulk Image Watermarker by nick<span class="text-sm bg-green-100 text-green-800 py-1 px-2 rounded-full align-middle ml-2">WebP Auto-Compress</span></h1>
+
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            
+            <!-- CONTROLS PANEL -->
+            <div class="bg-white p-6 rounded-lg shadow-md lg:col-span-1 space-y-4">
+                
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Upload Images (Bulk)</label>
+                    <input type="file" id="imageInput" multiple accept="image/*" class="w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 cursor-pointer">
+                    <p id="fileCount" class="text-xs text-gray-500 mt-1">0 files selected</p>
+                </div>
+
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Pre-made Presets</label>
+                    <select id="presetSelect" class="w-full border-gray-300 border rounded-md p-2 focus:ring-blue-500 focus:border-blue-500">
+                        <option value="custom">-- Custom --</option>
+                        <option value="copyright">Subtle Copyright (Bottom Right)</option>
+                        <option value="draft">Red Diagonal DRAFT (Center)</option>
+                        <option value="tiled">Tiled / Repeated Pattern</option>
+                    </select>
+                </div>
+
+                <hr class="my-4">
+
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Watermark Text</label>
+                    <input type="text" id="watermarkText" value="© MyBrand 2024" class="w-full border-gray-300 border rounded-md p-2">
+                </div>
+
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Color</label>
+                        <input type="color" id="textColor" value="#ffffff" class="w-full h-10 border-0 rounded-md cursor-pointer">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Opacity (<span id="opacityVal">50</span>%)</label>
+                        <input type="range" id="opacity" min="0.1" max="1" step="0.1" value="0.5" class="w-full mt-2">
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Size (px)</label>
+                        <input type="number" id="textSize" value="40" class="w-full border-gray-300 border rounded-md p-2">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Position</label>
+                        <select id="position" class="w-full border-gray-300 border rounded-md p-2">
+                            <option value="bottom-right">Bottom Right</option>
+                            <option value="bottom-left">Bottom Left</option>
+                            <option value="center">Center</option>
+                            <option value="top-left">Top Left</option>
+                            <option value="top-right">Top Right</option>
+                            <option value="tiled">Repeated (Tiled)</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="mt-4">
+                    <button id="processBtn" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-4 rounded-md transition duration-200 disabled:bg-gray-400" disabled>
+                        Process & Download (.webp)
+                    </button>
+                    <p class="text-xs text-gray-500 mt-2 text-center leading-tight">
+                        Note: Your browser may ask for permission to "download multiple files". Please click <b>Allow</b>.
+                    </p>
+                </div>
+            </div>
+
+            <!-- PREVIEW PANEL -->
+            <div class="bg-white p-6 rounded-lg shadow-md lg:col-span-2 flex flex-col items-center justify-center min-h-[400px]">
+                <h2 class="text-xl font-semibold text-gray-700 mb-4 w-full text-left">Live Preview (First Image)</h2>
+                <div id="previewContainer" class="w-full h-full flex items-center justify-center border-2 border-dashed border-gray-300 bg-gray-50 overflow-hidden relative">
+                    <span id="placeholderText" class="text-gray-400">Upload an image to see preview</span>
+                    <canvas id="previewCanvas" class="hidden max-w-full max-h-[500px] object-contain shadow-lg"></canvas>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <script>
+        const imageInput = document.getElementById('imageInput');
+        const fileCount = document.getElementById('fileCount');
+        const presetSelect = document.getElementById('presetSelect');
+        const watermarkText = document.getElementById('watermarkText');
+        const textColor = document.getElementById('textColor');
+        const opacity = document.getElementById('opacity');
+        const opacityVal = document.getElementById('opacityVal');
+        const textSize = document.getElementById('textSize');
+        const position = document.getElementById('position');
+        const processBtn = document.getElementById('processBtn');
+        const previewCanvas = document.getElementById('previewCanvas');
+        const placeholderText = document.getElementById('placeholderText');
+
+        let uploadedFiles = [];
+        let firstImageObj = null;
+
+        const presets = {
+            copyright: { text: '© MyBrand 2024', color: '#ffffff', opacity: '0.5', size: '40', position: 'bottom-right' },
+            draft: { text: 'DRAFT', color: '#ff0000', opacity: '0.3', size: '120', position: 'center' },
+            tiled: { text: 'DO NOT COPY', color: '#000000', opacity: '0.2', size: '30', position: 'tiled' }
+        };
+
+        const inputs = [watermarkText, textColor, opacity, textSize, position];
+        inputs.forEach(input => {
+            input.addEventListener('input', () => {
+                presetSelect.value = 'custom';
+                updatePreview();
+                if(input === opacity) opacityVal.innerText = Math.round(input.value * 100);
+            });
+        });
+
+        presetSelect.addEventListener('change', (e) => {
+            const val = e.target.value;
+            if (presets[val]) {
+                watermarkText.value = presets[val].text;
+                textColor.value = presets[val].color;
+                opacity.value = presets[val].opacity;
+                opacityVal.innerText = Math.round(presets[val].opacity * 100);
+                textSize.value = presets[val].size;
+                position.value = presets[val].position;
+                updatePreview();
+            }
+        });
+
+        imageInput.addEventListener('change', (e) => {
+            uploadedFiles = Array.from(e.target.files);
+            fileCount.innerText = `${uploadedFiles.length} file(s) selected`;
+            
+            if (uploadedFiles.length > 0) {
+                processBtn.disabled = false;
+                placeholderText.classList.add('hidden');
+                previewCanvas.classList.remove('hidden');
+                
+                const reader = new FileReader();
+                reader.onload = function(event) {
+                    const img = new Image();
+                    img.onload = function() {
+                        firstImageObj = img;
+                        updatePreview();
+                    }
+                    img.src = event.target.result;
+                }
+                reader.readAsDataURL(uploadedFiles[0]);
+            } else {
+                processBtn.disabled = true;
+                placeholderText.classList.remove('hidden');
+                previewCanvas.classList.add('hidden');
+            }
+        });
+
+        function drawWatermark(canvasObj, imgObj) {
+            const context = canvasObj.getContext('2d');
+            canvasObj.width = imgObj.width;
+            canvasObj.height = imgObj.height;
+
+            context.drawImage(imgObj, 0, 0);
+
+            const text = watermarkText.value;
+            const size = parseInt(textSize.value);
+            const pos = position.value;
+            
+            context.globalAlpha = parseFloat(opacity.value);
+            context.fillStyle = textColor.value;
+            context.font = `bold ${size}px Arial, sans-serif`;
+            
+            context.shadowColor = "rgba(0,0,0,0.5)";
+            context.shadowOffsetX = 2;
+            context.shadowOffsetY = 2;
+            context.shadowBlur = 4;
+
+            const padding = 20;
+
+            if (pos === 'tiled') {
+                context.translate(canvasObj.width/2, canvasObj.height/2);
+                context.rotate(-Math.PI / 4);
+                context.translate(-canvasObj.width/2, -canvasObj.height/2);
+
+                const diagonalLength = Math.sqrt(canvasObj.width**2 + canvasObj.height**2);
+                const stepX = context.measureText(text).width + 50;
+                const stepY = size * 3;
+
+                for (let x = -diagonalLength; x < diagonalLength * 2; x += stepX) {
+                    for (let y = -diagonalLength; y < diagonalLength * 2; y += stepY) {
+                        context.fillText(text, x, y);
+                    }
+                }
+            } else {
+                let x, y;
+                context.textBaseline = 'top';
+                const textWidth = context.measureText(text).width;
+
+                switch (pos) {
+                    case 'top-left': x = padding; y = padding; break;
+                    case 'top-right': x = canvasObj.width - textWidth - padding; y = padding; break;
+                    case 'bottom-left': x = padding; y = canvasObj.height - size - padding; break;
+                    case 'bottom-right': x = canvasObj.width - textWidth - padding; y = canvasObj.height - size - padding; break;
+                    case 'center': x = (canvasObj.width - textWidth) / 2; y = (canvasObj.height - size) / 2; break;
+                }
+                context.fillText(text, x, y);
+            }
+        }
+
+        function updatePreview() {
+            if (!firstImageObj) return;
+            drawWatermark(previewCanvas, firstImageObj);
+        }
+
+        // --- NEW LOGIC: WEBP COMPRESSION & DIRECT MULTIPLE DOWNLOADS ---
+        processBtn.addEventListener('click', async () => {
+            if (uploadedFiles.length === 0) return;
+            
+            processBtn.disabled = true;
+            const offScreenCanvas = document.createElement('canvas');
+
+            for (let i = 0; i < uploadedFiles.length; i++) {
+                const file = uploadedFiles[i];
+                
+                processBtn.innerText = `Converting & Downloading ${i + 1} of ${uploadedFiles.length}...`;
+
+                await new Promise((resolve) => {
+                    const reader = new FileReader();
+                    reader.onload = (e) => {
+                        const img = new Image();
+                        img.onload = () => {
+                            drawWatermark(offScreenCanvas, img);
+                            
+                            // 1. Force WebP Output
+                            const mimeType = 'image/webp';
+                            
+                            // 2. Dynamic Quality Logic based on file size
+                            // If file > 2MB, compress to 50% (0.5). Otherwise compress to 60% (0.6).
+                            let quality = 0.6;
+                            if (file.size > 2 * 1024 * 1024) { 
+                                quality = 0.5; 
+                            }
+
+                            // 3. Force the extension to be .webp in the new file name
+                            let cleanName = file.name.replace(/[^a-zA-Z0-9_\-\.]/g, '_');
+                            let baseName = cleanName.substring(0, cleanName.lastIndexOf('.')) || cleanName;
+                            let safeFileName = `watermarked_${baseName}.webp`;
+
+                            // Create a temporary native download link
+                            offScreenCanvas.toBlob((blob) => {
+                                if (!blob) return resolve();
+                                
+                                const url = URL.createObjectURL(blob);
+                                const a = document.createElement('a');
+                                a.style.display = 'none';
+                                a.href = url;
+                                a.download = safeFileName;
+                                
+                                document.body.appendChild(a);
+                                a.click();
+                                document.body.removeChild(a);
+                                
+                                URL.revokeObjectURL(url);
+                                
+                                setTimeout(resolve, 300);
+                            }, mimeType, quality);
+                        };
+                        img.src = e.target.result;
+                    };
+                    reader.readAsDataURL(file);
+                });
+            }
+
+            processBtn.innerText = "Process & Download (.webp)";
+            processBtn.disabled = false;
+        });
+    </script>
+</body>
+</html>

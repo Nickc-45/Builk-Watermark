@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Mobile Bulk Watermarker</title>
+    <title>Mobile Bulk Watermarker by Nick v1.0</title>
     <!-- Tailwind CSS for styling -->
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- JSZip for packaging files for mobile -->
@@ -76,7 +76,7 @@
                         Process & Save ZIP
                     </button>
                     <p id="statusText" class="text-xs text-gray-500 mt-2 text-center leading-tight">
-                        Will prompt to choose save location.
+                        Will prompt to save or share location.
                     </p>
                 </div>
             </div>
@@ -185,7 +185,7 @@
             context.shadowOffsetY = 2;
             context.shadowBlur = 4;
 
-            const padding = Math.max(10, canvasObj.width * 0.02); // Dynamic padding for mobile screens
+            const padding = Math.max(10, canvasObj.width * 0.02);
 
             if (pos === 'tiled') {
                 context.translate(canvasObj.width/2, canvasObj.height/2);
@@ -222,7 +222,7 @@
             drawWatermark(previewCanvas, firstImageObj);
         }
 
-        // --- MOBILE FRIENDLY ZIP GENERATION & CUSTOM LOCATION SAVING ---
+        // --- BULLETPROOF MULTI-PLATFORM DOWNLOAD LOGIC ---
         processBtn.addEventListener('click', async () => {
             if (uploadedFiles.length === 0) return;
             
@@ -244,7 +244,6 @@
                         img.onload = () => {
                             drawWatermark(offScreenCanvas, img);
                             
-                            // WebP Format & Size logic (50% or 60%)
                             const mimeType = 'image/webp';
                             let quality = (file.size > 2 * 1024 * 1024) ? 0.5 : 0.6;
 
@@ -253,9 +252,7 @@
                             let safeFileName = `${baseName}_watermarked.webp`;
 
                             offScreenCanvas.toBlob((blob) => {
-                                if (blob) {
-                                    imgFolder.file(safeFileName, blob);
-                                }
+                                if (blob) imgFolder.file(safeFileName, blob);
                                 resolve();
                             }, mimeType, quality);
                         };
@@ -267,56 +264,93 @@
 
             processBtn.innerText = "Generating ZIP...";
             
-            // Generate the ZIP file
             const zipBlob = await zip.generateAsync({
                 type: "blob",
                 compression: "DEFLATE",
                 compressionOptions: { level: 6 }
             });
 
-            processBtn.innerText = "Waiting for Save Location...";
+            processBtn.innerText = "Saving File...";
+            let success = false;
+            let fileName = 'Watermarked_Images.zip';
 
-            // --- SAVE FILE LOGIC (CUSTOM LOCATION SUPPORT) ---
+            // ATTEMPT 1: Native Mobile Share (Best for WebViews/APK)
+            // This forces Android/iOS to open the bottom Share sheet, allowing the user to select "Save to Device"
             try {
-                // Try modern File System Access API first (Best for custom locations)
-                if (window.showSaveFilePicker) {
+                const fileToShare = new File([zipBlob], fileName, { type: 'application/zip' });
+                if (navigator.canShare && navigator.canShare({ files: [fileToShare] })) {
+                    await navigator.share({
+                        title: 'Watermarked Images',
+                        files: [fileToShare]
+                    });
+                    statusText.innerText = "Saved via Share menu!";
+                    success = true;
+                }
+            } catch (e) {
+                console.log("Share failed or was cancelled by user. Attempting fallback...", e);
+            }
+
+            // ATTEMPT 2: Modern File System Access API (Desktop Chrome/Edge)
+            if (!success && window.showSaveFilePicker) {
+                try {
                     const fileHandle = await window.showSaveFilePicker({
-                        suggestedName: 'Watermarked_Images.zip',
-                        types: [{
-                            description: 'ZIP Archive',
-                            accept: {'application/zip': ['.zip']}
-                        }]
+                        suggestedName: fileName,
+                        types: [{ description: 'ZIP Archive', accept: {'application/zip': ['.zip']} }]
                     });
                     const writable = await fileHandle.createWritable();
                     await writable.write(zipBlob);
                     await writable.close();
                     statusText.innerText = "Saved successfully!";
-                } else {
-                    // Fallback for Mobile WebViews (Triggers native download manager)
+                    success = true;
+                } catch (e) {
+                    console.log("File picker failed/cancelled.", e);
+                }
+            }
+
+            // ATTEMPT 3: Standard Browser Download (Standard Mobile/Desktop Browsers)
+            if (!success) {
+                try {
                     const url = URL.createObjectURL(zipBlob);
                     const a = document.createElement('a');
                     a.style.display = 'none';
                     a.href = url;
-                    a.download = 'Watermarked_Images.zip';
+                    a.download = fileName;
                     document.body.appendChild(a);
                     a.click();
                     document.body.removeChild(a);
                     URL.revokeObjectURL(url);
                     statusText.innerText = "Download triggered!";
+                    success = true;
+                } catch (e) {
+                    console.log("Standard download failed.", e);
                 }
-            } catch (err) {
-                // If user cancels the save dialog, catch the error so the app doesn't break
-                console.warn("Save cancelled or failed:", err);
-                statusText.innerText = "Save cancelled.";
+            }
+
+            // ATTEMPT 4: Data URI Fallback (Extreme strict APK WebViews)
+            if (!success) {
+                try {
+                    const reader = new FileReader();
+                    reader.onload = function() {
+                        const a = document.createElement('a');
+                        a.href = reader.result;
+                        a.download = fileName;
+                        document.body.appendChild(a);
+                        a.click();
+                        document.body.removeChild(a);
+                    };
+                    reader.readAsDataURL(zipBlob);
+                    statusText.innerText = "Forced download triggered!";
+                } catch (e) {
+                    statusText.innerText = "Error: App wrapper blocked saving.";
+                }
             }
 
             // Reset UI
             setTimeout(() => {
                 processBtn.innerText = "Process & Save ZIP";
                 processBtn.disabled = false;
-                statusText.innerText = "Will prompt to choose save location.";
             }, 3000);
         });
     </script>
 </body>
-</html>
+    </html>

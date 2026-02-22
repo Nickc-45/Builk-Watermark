@@ -3,29 +3,31 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Bulk Image Watermarker (WebP Optimized)</title>
+    <title>Mobile Bulk Watermarker</title>
     <!-- Tailwind CSS for styling -->
     <script src="https://cdn.tailwindcss.com"></script>
+    <!-- JSZip for packaging files for mobile -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
 </head>
-<body class="bg-gray-100 min-h-screen font-sans">
+<body class="bg-gray-100 min-h-screen font-sans pb-10">
 
-    <div class="container mx-auto p-6 max-w-6xl">
-        <h1 class="text-3xl font-bold text-gray-800 mb-6 text-center">Bulk Image Watermarker by nick<span class="text-sm bg-green-100 text-green-800 py-1 px-2 rounded-full align-middle ml-2">WebP Auto-Compress</span></h1>
+    <div class="container mx-auto p-4 max-w-6xl">
+        <h1 class="text-2xl font-bold text-gray-800 mb-6 text-center">Bulk Watermarker <span class="text-xs bg-green-100 text-green-800 py-1 px-2 rounded-full align-middle ml-2">Mobile / WebP</span></h1>
 
-        <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
             
             <!-- CONTROLS PANEL -->
-            <div class="bg-white p-6 rounded-lg shadow-md lg:col-span-1 space-y-4">
+            <div class="bg-white p-5 rounded-lg shadow-md lg:col-span-1 space-y-4">
                 
                 <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">Upload Images (Bulk)</label>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Upload Images</label>
                     <input type="file" id="imageInput" multiple accept="image/*" class="w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 cursor-pointer">
                     <p id="fileCount" class="text-xs text-gray-500 mt-1">0 files selected</p>
                 </div>
 
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-1">Pre-made Presets</label>
-                    <select id="presetSelect" class="w-full border-gray-300 border rounded-md p-2 focus:ring-blue-500 focus:border-blue-500">
+                    <select id="presetSelect" class="w-full border-gray-300 border rounded-md p-2 text-sm focus:ring-blue-500 focus:border-blue-500">
                         <option value="custom">-- Custom --</option>
                         <option value="copyright">Subtle Copyright (Bottom Right)</option>
                         <option value="draft">Red Diagonal DRAFT (Center)</option>
@@ -37,7 +39,7 @@
 
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-1">Watermark Text</label>
-                    <input type="text" id="watermarkText" value="© MyBrand 2024" class="w-full border-gray-300 border rounded-md p-2">
+                    <input type="text" id="watermarkText" value="© MyBrand 2024" class="w-full border-gray-300 border rounded-md p-2 text-sm">
                 </div>
 
                 <div class="grid grid-cols-2 gap-4">
@@ -54,11 +56,11 @@
                 <div class="grid grid-cols-2 gap-4">
                     <div>
                         <label class="block text-sm font-medium text-gray-700 mb-1">Size (px)</label>
-                        <input type="number" id="textSize" value="40" class="w-full border-gray-300 border rounded-md p-2">
+                        <input type="number" id="textSize" value="40" class="w-full border-gray-300 border rounded-md p-2 text-sm">
                     </div>
                     <div>
                         <label class="block text-sm font-medium text-gray-700 mb-1">Position</label>
-                        <select id="position" class="w-full border-gray-300 border rounded-md p-2">
+                        <select id="position" class="w-full border-gray-300 border rounded-md p-2 text-sm">
                             <option value="bottom-right">Bottom Right</option>
                             <option value="bottom-left">Bottom Left</option>
                             <option value="center">Center</option>
@@ -71,20 +73,20 @@
 
                 <div class="mt-4">
                     <button id="processBtn" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-4 rounded-md transition duration-200 disabled:bg-gray-400" disabled>
-                        Process & Download (.webp)
+                        Process & Save ZIP
                     </button>
-                    <p class="text-xs text-gray-500 mt-2 text-center leading-tight">
-                        Note: Your browser may ask for permission to "download multiple files". Please click <b>Allow</b>.
+                    <p id="statusText" class="text-xs text-gray-500 mt-2 text-center leading-tight">
+                        Will prompt to choose save location.
                     </p>
                 </div>
             </div>
 
             <!-- PREVIEW PANEL -->
-            <div class="bg-white p-6 rounded-lg shadow-md lg:col-span-2 flex flex-col items-center justify-center min-h-[400px]">
-                <h2 class="text-xl font-semibold text-gray-700 mb-4 w-full text-left">Live Preview (First Image)</h2>
-                <div id="previewContainer" class="w-full h-full flex items-center justify-center border-2 border-dashed border-gray-300 bg-gray-50 overflow-hidden relative">
-                    <span id="placeholderText" class="text-gray-400">Upload an image to see preview</span>
-                    <canvas id="previewCanvas" class="hidden max-w-full max-h-[500px] object-contain shadow-lg"></canvas>
+            <div class="bg-white p-4 rounded-lg shadow-md lg:col-span-2 flex flex-col items-center justify-center min-h-[300px] lg:min-h-[400px]">
+                <h2 class="text-lg font-semibold text-gray-700 mb-2 w-full text-left">Live Preview</h2>
+                <div id="previewContainer" class="w-full h-full flex items-center justify-center border-2 border-dashed border-gray-300 bg-gray-50 overflow-hidden relative rounded-md">
+                    <span id="placeholderText" class="text-gray-400 text-sm">Upload to preview</span>
+                    <canvas id="previewCanvas" class="hidden max-w-full max-h-[400px] object-contain shadow-md"></canvas>
                 </div>
             </div>
 
@@ -104,6 +106,7 @@
         const processBtn = document.getElementById('processBtn');
         const previewCanvas = document.getElementById('previewCanvas');
         const placeholderText = document.getElementById('placeholderText');
+        const statusText = document.getElementById('statusText');
 
         let uploadedFiles = [];
         let firstImageObj = null;
@@ -182,7 +185,7 @@
             context.shadowOffsetY = 2;
             context.shadowBlur = 4;
 
-            const padding = 20;
+            const padding = Math.max(10, canvasObj.width * 0.02); // Dynamic padding for mobile screens
 
             if (pos === 'tiled') {
                 context.translate(canvasObj.width/2, canvasObj.height/2);
@@ -219,17 +222,20 @@
             drawWatermark(previewCanvas, firstImageObj);
         }
 
-        // --- NEW LOGIC: WEBP COMPRESSION & DIRECT MULTIPLE DOWNLOADS ---
+        // --- MOBILE FRIENDLY ZIP GENERATION & CUSTOM LOCATION SAVING ---
         processBtn.addEventListener('click', async () => {
             if (uploadedFiles.length === 0) return;
             
             processBtn.disabled = true;
+            statusText.innerText = "Converting images to WebP...";
+            
+            const zip = new JSZip();
+            const imgFolder = zip.folder("Watermarked_WebP");
             const offScreenCanvas = document.createElement('canvas');
 
             for (let i = 0; i < uploadedFiles.length; i++) {
                 const file = uploadedFiles[i];
-                
-                processBtn.innerText = `Converting & Downloading ${i + 1} of ${uploadedFiles.length}...`;
+                processBtn.innerText = `Processing ${i + 1}/${uploadedFiles.length}`;
 
                 await new Promise((resolve) => {
                     const reader = new FileReader();
@@ -238,38 +244,19 @@
                         img.onload = () => {
                             drawWatermark(offScreenCanvas, img);
                             
-                            // 1. Force WebP Output
+                            // WebP Format & Size logic (50% or 60%)
                             const mimeType = 'image/webp';
-                            
-                            // 2. Dynamic Quality Logic based on file size
-                            // If file > 2MB, compress to 50% (0.5). Otherwise compress to 60% (0.6).
-                            let quality = 0.6;
-                            if (file.size > 2 * 1024 * 1024) { 
-                                quality = 0.5; 
-                            }
+                            let quality = (file.size > 2 * 1024 * 1024) ? 0.5 : 0.6;
 
-                            // 3. Force the extension to be .webp in the new file name
                             let cleanName = file.name.replace(/[^a-zA-Z0-9_\-\.]/g, '_');
                             let baseName = cleanName.substring(0, cleanName.lastIndexOf('.')) || cleanName;
-                            let safeFileName = `watermarked_${baseName}.webp`;
+                            let safeFileName = `${baseName}_watermarked.webp`;
 
-                            // Create a temporary native download link
                             offScreenCanvas.toBlob((blob) => {
-                                if (!blob) return resolve();
-                                
-                                const url = URL.createObjectURL(blob);
-                                const a = document.createElement('a');
-                                a.style.display = 'none';
-                                a.href = url;
-                                a.download = safeFileName;
-                                
-                                document.body.appendChild(a);
-                                a.click();
-                                document.body.removeChild(a);
-                                
-                                URL.revokeObjectURL(url);
-                                
-                                setTimeout(resolve, 300);
+                                if (blob) {
+                                    imgFolder.file(safeFileName, blob);
+                                }
+                                resolve();
                             }, mimeType, quality);
                         };
                         img.src = e.target.result;
@@ -278,8 +265,57 @@
                 });
             }
 
-            processBtn.innerText = "Process & Download (.webp)";
-            processBtn.disabled = false;
+            processBtn.innerText = "Generating ZIP...";
+            
+            // Generate the ZIP file
+            const zipBlob = await zip.generateAsync({
+                type: "blob",
+                compression: "DEFLATE",
+                compressionOptions: { level: 6 }
+            });
+
+            processBtn.innerText = "Waiting for Save Location...";
+
+            // --- SAVE FILE LOGIC (CUSTOM LOCATION SUPPORT) ---
+            try {
+                // Try modern File System Access API first (Best for custom locations)
+                if (window.showSaveFilePicker) {
+                    const fileHandle = await window.showSaveFilePicker({
+                        suggestedName: 'Watermarked_Images.zip',
+                        types: [{
+                            description: 'ZIP Archive',
+                            accept: {'application/zip': ['.zip']}
+                        }]
+                    });
+                    const writable = await fileHandle.createWritable();
+                    await writable.write(zipBlob);
+                    await writable.close();
+                    statusText.innerText = "Saved successfully!";
+                } else {
+                    // Fallback for Mobile WebViews (Triggers native download manager)
+                    const url = URL.createObjectURL(zipBlob);
+                    const a = document.createElement('a');
+                    a.style.display = 'none';
+                    a.href = url;
+                    a.download = 'Watermarked_Images.zip';
+                    document.body.appendChild(a);
+                    a.click();
+                    document.body.removeChild(a);
+                    URL.revokeObjectURL(url);
+                    statusText.innerText = "Download triggered!";
+                }
+            } catch (err) {
+                // If user cancels the save dialog, catch the error so the app doesn't break
+                console.warn("Save cancelled or failed:", err);
+                statusText.innerText = "Save cancelled.";
+            }
+
+            // Reset UI
+            setTimeout(() => {
+                processBtn.innerText = "Process & Save ZIP";
+                processBtn.disabled = false;
+                statusText.innerText = "Will prompt to choose save location.";
+            }, 3000);
         });
     </script>
 </body>
